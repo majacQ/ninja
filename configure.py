@@ -84,7 +84,7 @@ class Platform(object):
         return self._platform == 'msvc'
 
     def msvc_needs_fs(self):
-        popen = subprocess.Popen(['cl', '/nologo', '/?'],
+        popen = subprocess.Popen(['cl', '/nologo', '/help'],
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
         out, err = popen.communicate()
@@ -507,6 +507,7 @@ for name in ['build',
              'eval_env',
              'graph',
              'graphviz',
+             'json',
              'lexer',
              'line_printer',
              'manifest_parser',
@@ -577,6 +578,7 @@ for name in ['build_log_test',
              'disk_interface_test',
              'edit_distance_test',
              'graph_test',
+             'json_test',
              'lexer_test',
              'manifest_parser_test',
              'missing_deps_test',
