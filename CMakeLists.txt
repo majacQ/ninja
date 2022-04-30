@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
-include(CheckIncludeFileCXX)
+include(CheckSymbolExists)
 include(CheckIPOSupported)
 
 project(ninja)
@@ -39,7 +39,7 @@ if(RE2C)
 	# the depfile parser and ninja lexers are generated using re2c.
 	function(re2c IN OUT)
 		add_custom_command(DEPENDS ${IN} OUTPUT ${OUT}
-			COMMAND ${RE2C} -b -i --no-generation-date -o ${OUT} ${IN}
+			COMMAND ${RE2C} -b -i --no-generation-date --no-version -o ${OUT} ${IN}
 		)
 	endfunction()
 	re2c(${PROJECT_SOURCE_DIR}/src/depfile_parser.in.cc ${PROJECT_BINARY_DIR}/depfile_parser.cc)
@@ -73,10 +73,15 @@ function(check_platform_supports_browse_mode RESULT)
 	endif()
 
 	# Now check availability of the unistd header
-	check_include_file_cxx(unistd.h PLATFORM_HAS_UNISTD_HEADER)
-	set(${RESULT} "${PLATFORM_HAS_UNISTD_HEADER}" PARENT_SCOPE)
-	if(NOT PLATFORM_HAS_UNISTD_HEADER)
-		message(WARNING "browse feature omitted due to missing unistd.h")
+	check_symbol_exists(fork "unistd.h" HAVE_FORK)
+	check_symbol_exists(pipe "unistd.h" HAVE_PIPE)
+	set(browse_supported 0)
+	if (HAVE_FORK AND HAVE_PIPE)
+		set(browse_supported 1)
+	endif ()
+	set(${RESULT} "${browse_supported}" PARENT_SCOPE)
+	if(NOT browse_supported)
+		message(WARNING "browse feature omitted due to missing `fork` and `pipe` functions")
 	endif()
 
 endfunction()
@@ -98,6 +103,7 @@ add_library(libninja OBJECT
 	src/eval_env.cc
 	src/graph.cc
 	src/graphviz.cc
+	src/json.cc
 	src/line_printer.cc
 	src/manifest_parser.cc
 	src/metrics.cc
@@ -116,10 +122,8 @@ if(WIN32)
 		src/msvc_helper-win32.cc
 		src/msvc_helper_main-win32.cc
 		src/getopt.c
+		src/minidump-win32.cc
 	)
-	if(MSVC)
-		target_sources(libninja PRIVATE src/minidump-win32.cc)
-	endif()
 else()
 	target_sources(libninja PRIVATE src/subprocess-posix.cc)
 	if(CMAKE_SYSTEM_NAME STREQUAL "OS400" OR CMAKE_SYSTEM_NAME STREQUAL "AIX")
@@ -191,6 +195,7 @@ if(BUILD_TESTING)
     src/dyndep_parser_test.cc
     src/edit_distance_test.cc
     src/graph_test.cc
+    src/json_test.cc
     src/lexer_test.cc
     src/manifest_parser_test.cc
     src/missing_deps_test.cc
@@ -227,4 +232,4 @@ if(BUILD_TESTING)
   add_test(NAME NinjaTest COMMAND ninja_test)
 endif()
 
-install(TARGETS ninja DESTINATION bin)
+install(TARGETS ninja)
